@@ -63,6 +63,9 @@ object WaveDecoder: AudioDecoder {
         result.format = channels
         result.frequency = audioFormat.sampleRate.toInt()
         engine.upload(result, buffer)
+
+        ais.close()
+        input.close()
         return result
     }
 

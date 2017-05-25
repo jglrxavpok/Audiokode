@@ -2,7 +2,7 @@ package org.jglrxavpok.audiokode
 
 import org.lwjgl.openal.AL10
 
-class Source(private val engine: SoundEngine) {
+class Source(private val engine: SoundEngine): Disposable {
     var position: Vector3D = NullVector
         set(value) {
             field = value
@@ -36,8 +36,8 @@ class Source(private val engine: SoundEngine) {
         engine.bindSourceBuffer(this, buffer)
     }
 
-    fun dispose() {
-        // TODO
+    override fun dispose() {
+        engine.disposeSource(this)
     }
 
     fun isPlaying(): Boolean {

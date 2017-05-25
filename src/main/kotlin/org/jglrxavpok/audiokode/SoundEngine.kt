@@ -17,10 +17,15 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.ShortBuffer
 
-class SoundEngine {
+class SoundEngine: Disposable {
 
     val listener = Listener()
     private val finders = mutableListOf<AudioFinder>()
+    private val sourcePool = Pool { createNewSource() }
+    private val bufferPool = Pool { createNewBuffer() }
+    private val autoDispose = mutableListOf<Source>()
+    private val createdBuffers = hashSetOf<Buffer>()
+    private val createdSources = hashSetOf<Source>()
 
     fun initWithDefaultOpenAL() {
         initWithOpenAL(alcGetString(0, ALC_DEFAULT_DEVICE_SPECIFIER))
@@ -55,9 +60,10 @@ class SoundEngine {
     }
 
     fun backgroundSound(identifier: String, looping: Boolean): Source {
-        val source = generateSource() // TODO: pooled
+        val source = newSource()
         source.identifier = identifier
         source.looping = looping
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
         checkErrors("post generation")
 
         val buffer = decodeDirect(identifier)
@@ -66,6 +72,15 @@ class SoundEngine {
         source.bindBuffer(buffer)
         checkErrors("post bind")
         return source
+    }
+
+    /**
+     * Plays a background sound immediately and set its resources up to be disposed after being played
+     */
+    fun quickBackgroundSound(identifier: String) {
+        val source = backgroundSound(identifier, false)
+        autoDispose += source
+        source.play()
     }
 
     private fun decodeDirect(identifier: String): Buffer {
@@ -92,7 +107,7 @@ class SoundEngine {
         return byteArray
     }
 
-    private fun generateSource(): Source {
+    private fun createNewSource(): Source {
         val source = Source(this) // TODO: Pooling
         val id = alGenSources()
         source.alID = id
@@ -100,11 +115,16 @@ class SoundEngine {
         source.position = NullVector
         source.velocity = NullVector
         source.pitch = 1f
+
+        createdSources += source
         return source
     }
 
     fun update() {
         updateListener()
+
+        autoDispose.filterNot { it.isPlaying() }.forEach(Source::dispose)
+        autoDispose.clear()
     }
 
     fun updateListener() {
@@ -159,7 +179,31 @@ class SoundEngine {
         alBufferData(buffer.alID, format, raw, frequency)
     }
 
+    fun createNewBuffer(): Buffer {
+        val buffer = Buffer(alGenBuffers(), this)
+        createdBuffers += buffer
+        return buffer
+    }
+
+    fun newSource(): Source {
+        return sourcePool.get()
+    }
+
     fun newBuffer(): Buffer {
-        return Buffer(alGenBuffers(), this)
+        return bufferPool.get()
+    }
+
+    internal fun disposeSource(source: Source) {
+        sourcePool.add(source)
+        alSourcei(source.alID, AL_BUFFER, 0)
+    }
+
+    internal fun disposeBuffer(buffer: Buffer) {
+        bufferPool.add(buffer)
+    }
+
+    override fun dispose() {
+        alDeleteSources(createdSources.map { it.alID }.toIntArray())
+        alDeleteBuffers(createdBuffers.map { it.alID }.toIntArray())
     }
 }
