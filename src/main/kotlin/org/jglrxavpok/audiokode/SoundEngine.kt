@@ -1,8 +1,8 @@
 package org.jglrxavpok.audiokode
 
 import org.jglrxavpok.audiokode.decoders.Decoders
-import org.jglrxavpok.audiokode.decoders.VorbisDecoder
-import org.jglrxavpok.audiokode.decoders.WaveDecoder
+import org.jglrxavpok.audiokode.decoders.DirectVorbisDecoder
+import org.jglrxavpok.audiokode.decoders.DirectWaveDecoder
 import org.jglrxavpok.audiokode.finders.*
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
@@ -16,14 +16,17 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ShortBuffer
+import kotlin.coroutines.experimental.EmptyCoroutineContext.plus
 
 class SoundEngine: Disposable {
 
     val listener = Listener()
     private val finders = mutableListOf<AudioFinder>()
     private val sourcePool = Pool { createNewSource() }
+    private val streamingSourcePool = Pool { createNewStreamingSource() }
     private val bufferPool = Pool { createNewBuffer() }
     private val autoDispose = mutableListOf<Source>()
+    private val streamingSources = mutableListOf<StreamingSource>()
     private val createdBuffers = hashSetOf<Buffer>()
     private val createdSources = hashSetOf<Source>()
 
@@ -45,10 +48,10 @@ class SoundEngine: Disposable {
     }
 
     fun init() {
-        if( ! Decoders.contains(WaveDecoder))
-            Decoders.add(WaveDecoder)
-        if( ! Decoders.contains(VorbisDecoder))
-            Decoders.add(VorbisDecoder)
+        if( ! Decoders.contains(DirectWaveDecoder))
+            Decoders.add(DirectWaveDecoder)
+        if( ! Decoders.contains(DirectVorbisDecoder))
+            Decoders.add(DirectVorbisDecoder)
 
         addFinder(ClasspathFinder)
         addFinder(DiskRelativeFinder)
@@ -59,11 +62,14 @@ class SoundEngine: Disposable {
         finders += finder
     }
 
+    /**
+     * Prepares a source ready to play a background sound
+     */
     fun backgroundSound(identifier: String, looping: Boolean): Source {
         val source = newSource()
         source.identifier = identifier
         source.looping = looping
-        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         checkErrors("post generation")
 
         val buffer = decodeDirect(identifier)
@@ -74,6 +80,22 @@ class SoundEngine: Disposable {
         return source
     }
 
+    fun backgroundMusic(identifier: String, looping: Boolean): Source {
+        val infos = prepareStreaming(identifier)
+
+        val source = newStreamingSource()
+        source.infos = infos
+
+        source.identifier = identifier
+        // TODO source.looping = looping
+
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
+        source.prepareRotatingBuffers()
+        streamingSources += source
+
+        return source
+    }
+
     /**
      * Plays a background sound immediately and set its resources up to be disposed after being played
      */
@@ -81,6 +103,14 @@ class SoundEngine: Disposable {
         val source = backgroundSound(identifier, false)
         autoDispose += source
         source.play()
+    }
+
+    private fun prepareStreaming(identifier: String): StreamingInfos {
+        finders.reversed()
+                .map { it.findAudio(identifier) }
+                .filter { it != AUDIO_NOT_FOUND }
+                .forEach { return it.streamDecoder.prepare(it.input) } // remember: this 'return' returns from decodeDirect!
+        throw IOException("Could not find audio file with identifier $identifier")
     }
 
     private fun decodeDirect(identifier: String): Buffer {
@@ -108,7 +138,20 @@ class SoundEngine: Disposable {
     }
 
     private fun createNewSource(): Source {
-        val source = Source(this) // TODO: Pooling
+        val source = Source(this)
+        val id = alGenSources()
+        source.alID = id
+        source.gain = 1f
+        source.position = NullVector
+        source.velocity = NullVector
+        source.pitch = 1f
+
+        createdSources += source
+        return source
+    }
+
+    private fun createNewStreamingSource(): StreamingSource {
+        val source = StreamingSource(this)
         val id = alGenSources()
         source.alID = id
         source.gain = 1f
@@ -125,6 +168,7 @@ class SoundEngine: Disposable {
 
         autoDispose.filterNot { it.isPlaying() }.forEach(Source::dispose)
         autoDispose.clear()
+        streamingSources.forEach(StreamingSource::updateStream)
     }
 
     fun updateListener() {
@@ -183,6 +227,10 @@ class SoundEngine: Disposable {
         val buffer = Buffer(alGenBuffers(), this)
         createdBuffers += buffer
         return buffer
+    }
+
+    fun newStreamingSource(): StreamingSource {
+        return streamingSourcePool.get()
     }
 
     fun newSource(): Source {

@@ -4,7 +4,7 @@ import org.lwjgl.openal.AL10.AL_NO_ERROR
 import org.lwjgl.openal.AL10.alGetError
 import org.lwjgl.openal.AL10
 
-
+var StreamingBufferSize = 48000
 
 fun checkErrors(info: String = "") {
     val error = alGetError()

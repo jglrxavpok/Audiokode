@@ -2,7 +2,7 @@ package org.jglrxavpok.audiokode
 
 import org.lwjgl.openal.AL10
 
-class Source(private val engine: SoundEngine): Disposable {
+open class Source(private val engine: SoundEngine): Disposable {
     var position: Vector3D = NullVector
         set(value) {
             field = value
@@ -47,4 +47,5 @@ class Source(private val engine: SoundEngine): Disposable {
     fun play() {
         AL10.alSourcePlay(alID)
     }
+
 }

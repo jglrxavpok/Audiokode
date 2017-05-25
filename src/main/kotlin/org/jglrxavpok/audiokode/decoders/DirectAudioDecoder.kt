@@ -5,6 +5,7 @@ import org.jglrxavpok.audiokode.SoundEngine
 
 interface AudioDecoder {
 
+    val streamingVariant: StreamingDecoder
     val extension: String
     /**
      * Decodes a raw byte stream (from a sound file, for instance) and converts it to a format that is usable by OpenAL

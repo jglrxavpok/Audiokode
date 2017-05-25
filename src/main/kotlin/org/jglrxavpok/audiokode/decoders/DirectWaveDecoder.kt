@@ -10,7 +10,9 @@ import java.io.IOException
 import java.nio.ByteOrder
 
 
-object WaveDecoder: AudioDecoder {
+object DirectWaveDecoder : AudioDecoder {
+    override val streamingVariant: StreamingDecoder = StreamingWaveDecoder
+
     override val extension: String = "wav"
     // FIXME FROM LWJGL2 WaveData
 
@@ -69,7 +71,7 @@ object WaveDecoder: AudioDecoder {
         return result
     }
 
-    private fun convertAudioBytes(audioBytes: ByteArray, twoBytesData: Boolean, order: ByteOrder): ByteBuffer {
+    internal fun convertAudioBytes(audioBytes: ByteArray, twoBytesData: Boolean, order: ByteOrder): ByteBuffer {
         val dest = ByteBuffer.allocateDirect(audioBytes.size)
         dest.order(ByteOrder.nativeOrder())
         val src = ByteBuffer.wrap(audioBytes)

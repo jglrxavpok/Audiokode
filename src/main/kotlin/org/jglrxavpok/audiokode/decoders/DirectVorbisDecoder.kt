@@ -14,7 +14,10 @@ import org.lwjgl.system.libc.LibCStdlib.free
 import java.io.IOException
 
 
-object VorbisDecoder: AudioDecoder {
+object DirectVorbisDecoder : AudioDecoder {
+    override val streamingVariant: StreamingDecoder
+        get() = StreamingWaveDecoder // FIXME
+
     override val extension: String = "ogg"
 
     // From LWJGL3 wiki
