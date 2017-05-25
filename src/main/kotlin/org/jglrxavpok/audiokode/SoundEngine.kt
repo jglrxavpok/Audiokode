@@ -99,8 +99,14 @@ class SoundEngine: Disposable {
     /**
      * Plays a background sound immediately and set its resources up to be disposed after being played
      */
-    fun quickBackgroundSound(identifier: String) {
+    fun quickplayBackgroundSound(identifier: String) {
         val source = backgroundSound(identifier, false)
+        autoDispose += source
+        source.play()
+    }
+
+    fun quickplayBackgroundMusic(identifier: String) {
+        val source = backgroundMusic(identifier, false)
         autoDispose += source
         source.play()
     }
@@ -253,5 +259,9 @@ class SoundEngine: Disposable {
     override fun dispose() {
         alDeleteSources(createdSources.map { it.alID }.toIntArray())
         alDeleteBuffers(createdBuffers.map { it.alID }.toIntArray())
+    }
+
+    fun isSomethingPlaying(): Boolean {
+        return createdSources.any { it.isPlaying() }
     }
 }
