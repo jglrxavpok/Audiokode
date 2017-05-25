@@ -1,9 +1,9 @@
 package org.jglrxavpok.audiokode
 
-public typealias Vector3D = Triple<Float, Float, Float>
+typealias Vector3D = Triple<Float, Float, Float>
 
-public operator fun Vector3D.plus(other: Vector3D) = Vector3D(this.first+other.first, this.second+other.second, this.third+other.third)
-public operator fun Vector3D.minus(other: Vector3D) = Vector3D(this.first-other.first, this.second-other.second, this.third-other.third)
+operator fun Vector3D.plus(other: Vector3D) = Vector3D(this.first+other.first, this.second+other.second, this.third+other.third)
+operator fun Vector3D.minus(other: Vector3D) = Vector3D(this.first-other.first, this.second-other.second, this.third-other.third)
 
 val Vector3D.x
     get() = first
@@ -12,4 +12,4 @@ val Vector3D.y
 val Vector3D.z
     get() = third
 
-public val NullVector = Vector3D(0f, 0f, 0f)
+val NullVector = Vector3D(0f, 0f, 0f)

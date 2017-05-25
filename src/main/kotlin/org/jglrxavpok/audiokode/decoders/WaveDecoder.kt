@@ -6,6 +6,7 @@ import org.jglrxavpok.audiokode.SoundEngine
 import org.lwjgl.openal.AL10
 import javax.sound.sampled.AudioSystem
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.nio.ByteOrder
 
 
@@ -17,67 +18,65 @@ object WaveDecoder: AudioDecoder {
         val input = ByteArrayInputStream(raw)
         val ais = AudioSystem.getAudioInputStream(input)
         //get format of data
-        val audioformat = ais.getFormat()
+        val audioFormat = ais.format
 
         // get channels
-        var channels = 0
-        if (audioformat.getChannels() == 1) {
-            if (audioformat.getSampleSizeInBits() == 8) {
+        val channels: Int
+        if (audioFormat.channels == 1) {
+            if (audioFormat.sampleSizeInBits == 8) {
                 channels = AL10.AL_FORMAT_MONO8
-            } else if (audioformat.getSampleSizeInBits() == 16) {
+            } else if (audioFormat.sampleSizeInBits == 16) {
                 channels = AL10.AL_FORMAT_MONO16
             } else {
-                assert(false) { "Illegal sample size" }
+                throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
             }
-        } else if (audioformat.getChannels() == 2) {
-            if (audioformat.getSampleSizeInBits() == 8) {
+        } else if (audioFormat.channels == 2) {
+            if (audioFormat.sampleSizeInBits == 8) {
                 channels = AL10.AL_FORMAT_STEREO8
-            } else if (audioformat.getSampleSizeInBits() == 16) {
+            } else if (audioFormat.sampleSizeInBits == 16) {
                 channels = AL10.AL_FORMAT_STEREO16
             } else {
-                assert(false) { "Illegal sample size" }
+                throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
             }
         } else {
-            assert(false) { "Only mono or stereo is supported" }
+            throw IOException("Only mono or stereo is supported, found ${audioFormat.channels} channels")
         }
 
         //read data into buffer
-        var buffer: ByteBuffer? = null
+        val buffer: ByteBuffer
         var available = ais.available()
         if (available <= 0) {
-            available = ais.getFormat().getChannels() * ais.getFrameLength() as Int * ais.getFormat().getSampleSizeInBits() / 8
+            available = ais.format.channels * ais.frameLength.toInt() * ais.format.sampleSizeInBits / 8
         }
         val buf = ByteArray(ais.available())
-        var read = 0
+        var read: Int
         var total = 0
         do {
             read = ais.read(buf, total, buf.size - total)
             if(read != -1 && total < buf.size)
                 total += read
         } while(read != -1 && total < buf.size)
-        buffer = convertAudioBytes(buf, audioformat.getSampleSizeInBits() == 16, if (audioformat.isBigEndian()) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
+        buffer = convertAudioBytes(buf, audioFormat.sampleSizeInBits == 16, if (audioFormat.isBigEndian) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
 
 
         val result = engine.newBuffer()
         result.format = channels
-        result.frequency = audioformat.sampleRate.toInt()
+        result.frequency = audioFormat.sampleRate.toInt()
         engine.upload(result, buffer)
         return result
     }
 
-    private fun convertAudioBytes(audio_bytes: ByteArray, two_bytes_data: Boolean, order: ByteOrder): ByteBuffer {
-        val dest = ByteBuffer.allocateDirect(audio_bytes.size)
+    private fun convertAudioBytes(audioBytes: ByteArray, twoBytesData: Boolean, order: ByteOrder): ByteBuffer {
+        val dest = ByteBuffer.allocateDirect(audioBytes.size)
         dest.order(ByteOrder.nativeOrder())
-        val src = ByteBuffer.wrap(audio_bytes)
+        val src = ByteBuffer.wrap(audioBytes)
         src.order(order)
-        if (two_bytes_data) {
-            val dest_short = dest.asShortBuffer()
-            val src_short = src.asShortBuffer()
-            while (src_short.hasRemaining())
-                dest_short.put(src_short.get())
+        if (twoBytesData) {
+            val destShort = dest.asShortBuffer()
+            val srcShort = src.asShortBuffer()
+            destShort.put(srcShort)
         } else {
-            while (src.hasRemaining())
-                dest.put(src.get())
+            dest.put(src)
         }
         dest.rewind()
         return dest

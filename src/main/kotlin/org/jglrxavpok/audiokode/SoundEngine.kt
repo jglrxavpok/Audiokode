@@ -8,15 +8,14 @@ import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.ALC
 import org.lwjgl.openal.ALC10.*
-import java.nio.ByteBuffer
-import java.io.ByteArrayOutputStream
 import org.lwjgl.openal.ALC10.ALC_DEFAULT_DEVICE_SPECIFIER
 import org.lwjgl.openal.ALC10.alcGetString
 import org.lwjgl.openal.ALC10.alcMakeContextCurrent
+import java.nio.ByteBuffer
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ShortBuffer
-
 
 class SoundEngine {
 
@@ -33,7 +32,7 @@ class SoundEngine {
         val context = alcCreateContext(device, attributes)
         alcMakeContextCurrent(context)
         val alcCapabilities = ALC.createCapabilities(device)
-        val alCapabilities = AL.createCapabilities(alcCapabilities)
+        AL.createCapabilities(alcCapabilities)
 
         checkErrors("post AL init")
 
@@ -70,12 +69,10 @@ class SoundEngine {
     }
 
     private fun decodeDirect(identifier: String): Buffer {
-        for (finder in finders.reversed()) {
-            val info = finder.findAudio(identifier)
-            if(info != AUDIO_NOT_FOUND) {
-                return info.decoder.decode(readData(info.input), this)
-            }
-        }
+        finders.reversed()
+                .map { it.findAudio(identifier) }
+                .filter { it != AUDIO_NOT_FOUND }
+                .forEach { return it.decoder.decode(readData(it.input), this) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 

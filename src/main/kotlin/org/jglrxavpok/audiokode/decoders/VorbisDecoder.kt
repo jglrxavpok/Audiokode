@@ -11,11 +11,13 @@ import org.lwjgl.system.MemoryStack.stackPop
 import org.lwjgl.system.MemoryStack.stackMallocInt
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.libc.LibCStdlib.free
+import java.io.IOException
 
 
 object VorbisDecoder: AudioDecoder {
     override val extension: String = "ogg"
 
+    // From LWJGL3 wiki
     override fun decode(raw: ByteArray, engine: SoundEngine): Buffer {
         stackPush()
         val channelsBuffer = stackMallocInt(1)
@@ -28,19 +30,21 @@ object VorbisDecoder: AudioDecoder {
 
         val rawAudioBuffer = stb_vorbis_decode_memory(rawBuffer, channelsBuffer, sampleRateBuffer)
 
-//Retreive the extra information that was stored in the buffers by the function
+        //Retrieve the extra information that was stored in the buffers by the function
         val channels = channelsBuffer.get()
         val sampleRate = sampleRateBuffer.get()
-//Free the space we allocated earlier
+        //Free the space we allocated earlier
         stackPop()
         stackPop()
 
-//Find the correct OpenAL format
-        var format = -1
+        //Find the correct OpenAL format
+        val format: Int
         if (channels == 1) {
             format = AL_FORMAT_MONO16
         } else if (channels == 2) {
             format = AL_FORMAT_STEREO16
+        } else {
+            throw IOException("Unsupported amount of channels: $channels")
         }
 
         val result = engine.newBuffer()

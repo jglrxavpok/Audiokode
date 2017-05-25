@@ -2,7 +2,6 @@ package org.jglrxavpok.audiokode.decoders
 
 import org.jglrxavpok.audiokode.Buffer
 import org.jglrxavpok.audiokode.SoundEngine
-import java.nio.ByteBuffer
 
 interface AudioDecoder {
 
