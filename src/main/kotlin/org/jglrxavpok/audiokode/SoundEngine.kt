@@ -16,7 +16,6 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ShortBuffer
-import kotlin.coroutines.experimental.EmptyCoroutineContext.plus
 
 class SoundEngine: Disposable {
 
@@ -66,10 +65,15 @@ class SoundEngine: Disposable {
      * Prepares a source ready to play a background sound
      */
     fun backgroundSound(identifier: String, looping: Boolean): Source {
+        val source = prepareDirectSource(identifier, looping)
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
+        return source
+    }
+
+    private fun prepareDirectSource(identifier: String, looping: Boolean): Source {
         val source = newSource()
         source.identifier = identifier
         source.looping = looping
-        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         checkErrors("post generation")
 
         val buffer = decodeDirect(identifier)
@@ -80,7 +84,25 @@ class SoundEngine: Disposable {
         return source
     }
 
+    fun sound(identifier: String, looping: Boolean): Source {
+        val source = prepareDirectSource(identifier, looping)
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
+        return source
+    }
+
     fun backgroundMusic(identifier: String, looping: Boolean): Source {
+        val source = prepareStreamingSource(identifier, looping)
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
+        return source
+    }
+
+    fun music(identifier: String, looping: Boolean): Source {
+        val source = prepareStreamingSource(identifier, looping)
+        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
+        return source
+    }
+
+    private fun prepareStreamingSource(identifier: String, looping: Boolean): Source {
         val infos = prepareStreaming(identifier)
 
         val source = newStreamingSource()
@@ -89,7 +111,6 @@ class SoundEngine: Disposable {
         source.identifier = identifier
         // TODO source.looping = looping
 
-        alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         source.prepareRotatingBuffers()
         streamingSources += source
 
@@ -101,6 +122,18 @@ class SoundEngine: Disposable {
      */
     fun quickplayBackgroundSound(identifier: String) {
         val source = backgroundSound(identifier, false)
+        autoDispose += source
+        source.play()
+    }
+
+    fun quickplayMusic(identifier: String) {
+        val source = music(identifier, false)
+        autoDispose += source
+        source.play()
+    }
+
+    fun quickplaySound(identifier: String) {
+        val source = sound(identifier, false)
         autoDispose += source
         source.play()
     }
