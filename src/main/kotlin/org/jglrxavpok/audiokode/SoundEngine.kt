@@ -17,7 +17,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.ShortBuffer
 
-class SoundEngine: Disposable {
+open class SoundEngine: Disposable {
 
     val listener = Listener()
     private val finders = mutableListOf<AudioFinder>()
@@ -46,7 +46,7 @@ class SoundEngine: Disposable {
         init()
     }
 
-    fun init() {
+    open fun init() {
         if( ! Decoders.contains(DirectWaveDecoder))
             Decoders.add(DirectWaveDecoder)
         if( ! Decoders.contains(DirectVorbisDecoder))
