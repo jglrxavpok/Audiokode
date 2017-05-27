@@ -39,7 +39,11 @@ object StreamingWaveDecoder: StreamingDecoder {
             throw IOException("Only mono or stereo is supported, found ${audioFormat.channels} channels")
         }
 
-        return StreamingInfos(this, channels, audioFormat.sampleRate.toInt(), audioFormat.sampleSizeInBits, audioFormat.isBigEndian, ais.frameLength, audioFormat.channels, input)
+        val result = StreamingInfos(this, channels, audioFormat.sampleRate.toInt(), audioFormat.channels, input)
+        result.payload["sampleSizeInBits"] = audioFormat.sampleSizeInBits
+        result.payload["isBigEndian"] = audioFormat.isBigEndian
+        result.payload["frameLength"] = ais.frameLength
+        return result
     }
 
     override fun loadNextChunk(bufferID: Int, infos: StreamingInfos): Boolean {
@@ -58,7 +62,9 @@ object StreamingWaveDecoder: StreamingDecoder {
                 eof = true
             }
         } while(read != -1 && total < buf.size)
-        buffer = DirectWaveDecoder.convertAudioBytes(buf, infos.sampleSizeInBits == 16, if (infos.isBigEndian) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
+        val sampleSizeInBits = infos.payload["sampleSizeInBits"] as Int
+        val isBigEndian = infos.payload["isBigEndian"] as Boolean
+        buffer = DirectWaveDecoder.convertAudioBytes(buf, sampleSizeInBits == 16, if (isBigEndian) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
 
         alBufferData(bufferID, infos.format, buffer, infos.frequency)
         return eof

@@ -47,4 +47,6 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 }
 
 // TODO: Cleanup or simplify
-data class StreamingInfos(val decoder: StreamingDecoder, val format: Int, val frequency: Int, val sampleSizeInBits: Int, val isBigEndian: Boolean, val frameLength: Long, val channels: Int, val input: InputStream)
+data class StreamingInfos(val decoder: StreamingDecoder, val format: Int, val frequency: Int, val channels: Int, val input: InputStream) {
+    val payload = hashMapOf<String, Any>()
+}

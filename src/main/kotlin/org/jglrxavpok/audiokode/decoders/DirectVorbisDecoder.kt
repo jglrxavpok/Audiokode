@@ -15,8 +15,7 @@ import java.io.IOException
 
 
 object DirectVorbisDecoder : AudioDecoder {
-    override val streamingVariant: StreamingDecoder
-        get() = StreamingWaveDecoder // FIXME
+    override val streamingVariant: StreamingDecoder = StreamingVorbisDecoder
 
     override val extension: String = "ogg"
 
