@@ -19,7 +19,6 @@ import org.lwjgl.BufferUtils
 object StreamingVorbisDecoder: StreamingDecoder {
 
     private val STBDecoderKey = "stb decoder"
-    private val ChannelsKey = "channels"
 
     override fun prepare(input: InputStream): StreamingInfos {
         val buf = readAll(input)
@@ -80,28 +79,4 @@ object StreamingVorbisDecoder: StreamingDecoder {
         return false
     }
 
-    private fun toByteArray(buffer: ByteBuffer): ByteArray {
-        val n = buffer.remaining()
-        val result = ByteArray(n)
-        for(i in 0 until n) {
-            result[i] = buffer[i]
-        }
-        return result
-    }
-
-    private fun extractChunk(input: InputStream, buf: ByteArray): Boolean {
-        var read: Int
-        var total = 0
-        var eof = false
-        do {
-            read = input.read(buf, total, buf.size - total)
-            if(read != -1 && total < buf.size)
-                total += read
-
-            if(read == -1) {
-                eof = true
-            }
-        } while(read != -1 && total < buf.size)
-        return eof
-    }
 }
