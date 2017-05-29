@@ -30,6 +30,7 @@ open class SoundEngine: Disposable {
     private val streamingSources = mutableListOf<StreamingSource>()
     private val createdBuffers = hashSetOf<Buffer>()
     private val createdSources = hashSetOf<Source>()
+    private var masterGain = 1f
 
     fun initWithDefaultOpenAL() {
         initWithOpenAL(alcGetString(0, ALC_DEFAULT_DEVICE_SPECIFIER))
@@ -66,8 +67,10 @@ open class SoundEngine: Disposable {
     /**
      * Prepares a source ready to play a background sound
      */
-    fun backgroundSound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+    fun backgroundSound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f): Source {
         val source = prepareDirectSource(identifier, looping, filter)
+        source.gain = gain
+        source.pitch = pitch
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         return source
     }
@@ -86,20 +89,30 @@ open class SoundEngine: Disposable {
         return source
     }
 
-    fun sound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+    fun sound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f): Source {
         val source = prepareDirectSource(identifier, looping, filter)
+        source.position = position
+        source.velocity = velocity
+        source.gain = gain
+        source.pitch = pitch
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
         return source
     }
 
-    fun backgroundMusic(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+    fun backgroundMusic(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f): Source {
         val source = prepareStreamingSource(identifier, looping, filter)
+        source.gain = gain
+        source.pitch = pitch
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         return source
     }
 
-    fun music(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+    fun music(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f): Source {
         val source = prepareStreamingSource(identifier, looping, filter)
+        source.position = position
+        source.velocity = velocity
+        source.gain = gain
+        source.pitch = pitch
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
         return source
     }
@@ -122,26 +135,26 @@ open class SoundEngine: Disposable {
     /**
      * Plays a background sound immediately and set its resources up to be disposed after being played
      */
-    fun quickplayBackgroundSound(identifier: String, filter: AudioFilter = NoFilter) {
-        val source = backgroundSound(identifier, false, filter)
+    fun quickplayBackgroundSound(identifier: String, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
+        val source = backgroundSound(identifier, false, filter, gain, pitch)
         autoDispose += source
         source.play()
     }
 
-    fun quickplayMusic(identifier: String, filter: AudioFilter = NoFilter) {
-        val source = music(identifier, false, filter)
+    fun quickplayMusic(identifier: String, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
+        val source = music(identifier, false, filter, position, velocity, gain, pitch)
         autoDispose += source
         source.play()
     }
 
-    fun quickplaySound(identifier: String, filter: AudioFilter = NoFilter) {
-        val source = sound(identifier, false, filter)
+    fun quickplaySound(identifier: String, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
+        val source = sound(identifier, false, filter, position, velocity, gain, pitch)
         autoDispose += source
         source.play()
     }
 
-    fun quickplayBackgroundMusic(identifier: String, filter: AudioFilter = NoFilter) {
-        val source = backgroundMusic(identifier, false, filter)
+    fun quickplayBackgroundMusic(identifier: String, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
+        val source = backgroundMusic(identifier, false, filter, gain, pitch)
         autoDispose += source
         source.play()
     }
@@ -230,7 +243,7 @@ open class SoundEngine: Disposable {
     }
 
     internal fun sourceGain(source: Source, value: Float) {
-        alSourcef(source.alID, AL_GAIN, value)
+        alSourcef(source.alID, AL_GAIN, value*masterGain)
     }
 
     internal fun sourcePitch(source: Source, value: Float) {
@@ -307,5 +320,14 @@ open class SoundEngine: Disposable {
 
     fun isSomethingPlaying(): Boolean {
         return createdSources.any { it.isPlaying() }
+    }
+
+    fun getMasterGain() = masterGain
+
+    fun setMasterGain(master: Float) {
+        masterGain = master
+        createdSources.forEach {
+            sourceGain(it, it.gain) // update source gain
+        }
     }
 }

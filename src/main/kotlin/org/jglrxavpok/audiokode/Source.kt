@@ -48,4 +48,16 @@ open class Source(protected val engine: SoundEngine): Disposable {
         AL10.alSourcePlay(alID)
     }
 
+    fun pause() {
+        AL10.alSourcePause(alID)
+    }
+
+    fun resume() {
+        play()
+    }
+
+    fun stop() {
+        AL10.alSourceStop(alID)
+    }
+
 }
