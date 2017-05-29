@@ -1,10 +1,11 @@
 package org.jglrxavpok.audiokode.decoders
 
+import org.jglrxavpok.audiokode.SoundEngine
 import org.jglrxavpok.audiokode.StreamingBufferSize
 import org.jglrxavpok.audiokode.StreamingInfos
+import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10
 import org.lwjgl.openal.AL10.alBufferData
-import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -12,7 +13,7 @@ import java.nio.ByteOrder
 import javax.sound.sampled.AudioSystem
 
 object StreamingWaveDecoder: StreamingDecoder {
-    override fun prepare(input: InputStream): StreamingInfos {
+    override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfos {
         val ais = AudioSystem.getAudioInputStream(input)
         //get format of data
         val audioFormat = ais.format
@@ -39,14 +40,14 @@ object StreamingWaveDecoder: StreamingDecoder {
             throw IOException("Only mono or stereo is supported, found ${audioFormat.channels} channels")
         }
 
-        val result = StreamingInfos(this, channels, audioFormat.sampleRate.toInt(), audioFormat.channels, input)
+        val result = StreamingInfos(this, channels, audioFormat.sampleRate.toInt(), audioFormat.channels, input, filter)
         result.payload["sampleSizeInBits"] = audioFormat.sampleSizeInBits
         result.payload["isBigEndian"] = audioFormat.isBigEndian
         result.payload["frameLength"] = ais.frameLength
         return result
     }
 
-    override fun loadNextChunk(bufferID: Int, infos: StreamingInfos): Boolean {
+    override fun loadNextChunk(bufferID: Int, infos: StreamingInfos, engine: SoundEngine): Boolean {
         val buffer: ByteBuffer
             //available = infos.channels * infos.frameLength.toInt() * infos.sampleSizeInBits / 8
         val buf = ByteArray(StreamingBufferSize)
@@ -66,7 +67,7 @@ object StreamingWaveDecoder: StreamingDecoder {
         val isBigEndian = infos.payload["isBigEndian"] as Boolean
         buffer = DirectWaveDecoder.convertAudioBytes(buf, sampleSizeInBits == 16, if (isBigEndian) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)
 
-        alBufferData(bufferID, infos.format, buffer, infos.frequency)
+        engine.bufferData(bufferID, infos.format, buffer, infos.frequency, infos.filter)
         return eof
     }
 }

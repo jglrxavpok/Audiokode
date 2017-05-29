@@ -9,10 +9,6 @@ class Buffer(val alID: Int, val engine: SoundEngine): Disposable {
     var frequency = 0
     var format = 0
 
-    fun upload() {
-        engine.upload(this, data)
-    }
-
     override fun dispose() {
         engine.disposeBuffer(this)
     }

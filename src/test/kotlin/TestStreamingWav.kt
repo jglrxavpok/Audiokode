@@ -1,6 +1,6 @@
 import org.jglrxavpok.audiokode.SoundEngine
 
-object TestStreamingPlay {
+object TestStreamingWav {
 
     @JvmStatic fun main(args: Array<String>) {
         val engine = SoundEngine()

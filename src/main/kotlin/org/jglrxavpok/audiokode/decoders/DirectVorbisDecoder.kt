@@ -2,6 +2,7 @@ package org.jglrxavpok.audiokode.decoders
 
 import org.jglrxavpok.audiokode.Buffer
 import org.jglrxavpok.audiokode.SoundEngine
+import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.BufferUtils
 
 import org.lwjgl.openal.AL10.AL_FORMAT_STEREO16
@@ -20,7 +21,7 @@ object DirectVorbisDecoder : AudioDecoder {
     override val extension: String = "ogg"
 
     // From LWJGL3 wiki
-    override fun decode(raw: ByteArray, engine: SoundEngine): Buffer {
+    override fun decode(raw: ByteArray, engine: SoundEngine, filter: AudioFilter): Buffer {
         stackPush()
         val channelsBuffer = stackMallocInt(1)
         stackPush()
@@ -52,7 +53,7 @@ object DirectVorbisDecoder : AudioDecoder {
         val result = engine.newBuffer()
         result.frequency = sampleRate
         result.format = format
-        engine.upload(result, rawAudioBuffer)
+        engine.upload(result, rawAudioBuffer, filter)
 
         free(rawAudioBuffer)
         return result

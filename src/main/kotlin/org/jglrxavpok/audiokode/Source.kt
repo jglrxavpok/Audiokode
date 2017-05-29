@@ -2,7 +2,7 @@ package org.jglrxavpok.audiokode
 
 import org.lwjgl.openal.AL10
 
-open class Source(private val engine: SoundEngine): Disposable {
+open class Source(protected val engine: SoundEngine): Disposable {
     var position: Vector3D = NullVector
         set(value) {
             field = value

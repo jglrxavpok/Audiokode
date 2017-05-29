@@ -3,6 +3,7 @@ package org.jglrxavpok.audiokode.decoders
 import java.nio.ByteBuffer
 import org.jglrxavpok.audiokode.Buffer
 import org.jglrxavpok.audiokode.SoundEngine
+import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10
 import javax.sound.sampled.AudioSystem
 import java.io.ByteArrayInputStream
@@ -16,7 +17,7 @@ object DirectWaveDecoder : AudioDecoder {
     override val extension: String = "wav"
     // FIXME FROM LWJGL2 WaveData
 
-    override fun decode(raw: ByteArray, engine: SoundEngine): Buffer {
+    override fun decode(raw: ByteArray, engine: SoundEngine, filter: AudioFilter): Buffer {
         val input = ByteArrayInputStream(raw)
         val ais = AudioSystem.getAudioInputStream(input)
         //get format of data
@@ -64,7 +65,7 @@ object DirectWaveDecoder : AudioDecoder {
         val result = engine.newBuffer()
         result.format = channels
         result.frequency = audioFormat.sampleRate.toInt()
-        engine.upload(result, buffer)
+        engine.upload(result, buffer, filter)
 
         ais.close()
         input.close()

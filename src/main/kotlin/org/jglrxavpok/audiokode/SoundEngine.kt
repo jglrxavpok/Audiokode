@@ -3,6 +3,8 @@ package org.jglrxavpok.audiokode
 import org.jglrxavpok.audiokode.decoders.Decoders
 import org.jglrxavpok.audiokode.decoders.DirectVorbisDecoder
 import org.jglrxavpok.audiokode.decoders.DirectWaveDecoder
+import org.jglrxavpok.audiokode.filters.AudioFilter
+import org.jglrxavpok.audiokode.filters.NoFilter
 import org.jglrxavpok.audiokode.finders.*
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
@@ -64,19 +66,19 @@ open class SoundEngine: Disposable {
     /**
      * Prepares a source ready to play a background sound
      */
-    fun backgroundSound(identifier: String, looping: Boolean): Source {
-        val source = prepareDirectSource(identifier, looping)
+    fun backgroundSound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+        val source = prepareDirectSource(identifier, looping, filter)
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         return source
     }
 
-    private fun prepareDirectSource(identifier: String, looping: Boolean): Source {
+    private fun prepareDirectSource(identifier: String, looping: Boolean, filter: AudioFilter): Source {
         val source = newSource()
         source.identifier = identifier
         source.looping = looping
         checkErrors("post generation")
 
-        val buffer = decodeDirect(identifier)
+        val buffer = decodeDirect(identifier, filter)
         checkErrors("post decode")
 
         source.bindBuffer(buffer)
@@ -84,26 +86,26 @@ open class SoundEngine: Disposable {
         return source
     }
 
-    fun sound(identifier: String, looping: Boolean): Source {
-        val source = prepareDirectSource(identifier, looping)
+    fun sound(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+        val source = prepareDirectSource(identifier, looping, filter)
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
         return source
     }
 
-    fun backgroundMusic(identifier: String, looping: Boolean): Source {
-        val source = prepareStreamingSource(identifier, looping)
+    fun backgroundMusic(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+        val source = prepareStreamingSource(identifier, looping, filter)
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_TRUE) // the source will play exactly where the listener is
         return source
     }
 
-    fun music(identifier: String, looping: Boolean): Source {
-        val source = prepareStreamingSource(identifier, looping)
+    fun music(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+        val source = prepareStreamingSource(identifier, looping, filter)
         alSourcei(source.alID, AL_SOURCE_RELATIVE, AL_FALSE)
         return source
     }
 
-    private fun prepareStreamingSource(identifier: String, looping: Boolean): Source {
-        val infos = prepareStreaming(identifier)
+    private fun prepareStreamingSource(identifier: String, looping: Boolean, filter: AudioFilter = NoFilter): Source {
+        val infos = prepareStreaming(identifier, filter)
 
         val source = newStreamingSource()
         source.infos = infos
@@ -120,43 +122,43 @@ open class SoundEngine: Disposable {
     /**
      * Plays a background sound immediately and set its resources up to be disposed after being played
      */
-    fun quickplayBackgroundSound(identifier: String) {
-        val source = backgroundSound(identifier, false)
+    fun quickplayBackgroundSound(identifier: String, filter: AudioFilter = NoFilter) {
+        val source = backgroundSound(identifier, false, filter)
         autoDispose += source
         source.play()
     }
 
-    fun quickplayMusic(identifier: String) {
-        val source = music(identifier, false)
+    fun quickplayMusic(identifier: String, filter: AudioFilter = NoFilter) {
+        val source = music(identifier, false, filter)
         autoDispose += source
         source.play()
     }
 
-    fun quickplaySound(identifier: String) {
-        val source = sound(identifier, false)
+    fun quickplaySound(identifier: String, filter: AudioFilter = NoFilter) {
+        val source = sound(identifier, false, filter)
         autoDispose += source
         source.play()
     }
 
-    fun quickplayBackgroundMusic(identifier: String) {
-        val source = backgroundMusic(identifier, false)
+    fun quickplayBackgroundMusic(identifier: String, filter: AudioFilter = NoFilter) {
+        val source = backgroundMusic(identifier, false, filter)
         autoDispose += source
         source.play()
     }
 
-    private fun prepareStreaming(identifier: String): StreamingInfos {
+    private fun prepareStreaming(identifier: String, filter: AudioFilter): StreamingInfos {
         finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.streamDecoder.prepare(it.input) } // remember: this 'return' returns from decodeDirect!
+                .forEach { return it.streamDecoder.prepare(it.input, filter) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 
-    private fun decodeDirect(identifier: String): Buffer {
+    private fun decodeDirect(identifier: String, filter: AudioFilter): Buffer {
         finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.decoder.decode(readData(it.input), this) } // remember: this 'return' returns from decodeDirect!
+                .forEach { return it.decoder.decode(readData(it.input), this, filter) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 
@@ -243,23 +245,32 @@ open class SoundEngine: Disposable {
         alSourcei(source.alID, AL_BUFFER, buffer.alID)
     }
 
-    internal fun upload(buffer: Buffer, raw: ByteArray) {
+    internal fun upload(buffer: Buffer, raw: ByteArray, filter: AudioFilter) {
         val dataBuffer = ByteBuffer.allocateDirect(raw.size)
         dataBuffer.put(raw)
         dataBuffer.flip()
-        upload(buffer, dataBuffer)
+        upload(buffer, dataBuffer, filter)
     }
 
-    internal fun upload(buffer: Buffer, raw: ShortBuffer) {
+    internal fun upload(buffer: Buffer, raw: ShortBuffer, filter: AudioFilter) {
         val format = buffer.format
         val frequency = buffer.frequency
-        alBufferData(buffer.alID, format, raw, frequency)
+        bufferData(buffer.alID, format, filter(raw), frequency)
     }
 
-    internal fun upload(buffer: Buffer, raw: ByteBuffer) {
-        val format = buffer.format
+    internal fun bufferData(alID: Int, format: Int, pcmData: ShortBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
+        alBufferData(alID, format, filter(pcmData), frequency)
+    }
+
+    internal fun bufferData(alID: Int, format: Int, pcmData: ByteBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
+        bufferData(alID, format, pcmData.asShortBuffer(), frequency, filter)
+    }
+
+    internal fun upload(buffer: Buffer, raw: ByteBuffer, filter: AudioFilter) {
+        /*val format = buffer.format
         val frequency = buffer.frequency
-        alBufferData(buffer.alID, format, raw, frequency)
+        alBufferData(buffer.alID, format, raw, frequency)*/
+        upload(buffer, raw.asShortBuffer(), filter)
     }
 
     fun createNewBuffer(): Buffer {
