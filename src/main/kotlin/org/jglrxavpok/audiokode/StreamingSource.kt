@@ -2,6 +2,7 @@ package org.jglrxavpok.audiokode
 
 import org.jglrxavpok.audiokode.decoders.StreamingDecoder
 import org.jglrxavpok.audiokode.filters.AudioFilter
+import org.lwjgl.BufferUtils
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.system.MemoryStack
 import java.io.InputStream
@@ -12,20 +13,26 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     private var eof = false
 
     fun updateStream() {
-        if(eof)
+        if(eof) {
+            println("end of file StreamingSource") // FIXME
             return
-        val processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
-        MemoryStack.stackPush()
-        if(processed > 0) {
-            val id = alSourceUnqueueBuffers(alID)
-            if( ! loadNext(id)) {
-                eof = true
-                println("eof!!!")
-                return
-            }
-            alSourceQueueBuffers(alID, id)
         }
-        MemoryStack.stackPop()
+        val processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
+        if (processed > 0) {
+            MemoryStack.stackPush()
+            val buffers = MemoryStack.stackMallocInt(processed)
+            alSourceUnqueueBuffers(alID, buffers)
+            buffers.rewind()
+            while(buffers.hasRemaining()) {
+                if (!loadNext(buffers.get())) {
+                    eof = true
+                    break
+                }
+            }
+            buffers.rewind()
+            alSourceQueueBuffers(alID, buffers)
+            MemoryStack.stackPop()
+        }
     }
 
     private fun loadNext(bufferID: Int): Boolean {
@@ -36,11 +43,13 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 
     fun prepareRotatingBuffers() {
         alSourcei(alID, AL_BUFFER, 0)
-        for (i in 1..4) {
-            val buffer = alGenBuffers()
-            infos!!.decoder.loadNextChunk(buffer, infos!!, engine)
-            alSourceQueueBuffers(alID, buffer)
-        }
+        val buffers = BufferUtils.createIntBuffer(8)
+        alGenBuffers(buffers)
+        buffers.rewind()
+        while(buffers.hasRemaining())
+            loadNext(buffers.get())
+        buffers.rewind()
+        alSourceQueueBuffers(alID, buffers)
     }
 }
 

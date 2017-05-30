@@ -5,6 +5,6 @@ object TestThreaded {
     @JvmStatic fun main(args: Array<String>) {
         val engine = ThreadedSoundEngine()
         engine.initWithDefaultOpenAL()
-        engine.quickplayBackgroundMusic("TestWav")
+        engine.quickplayBackgroundMusic("TestVorbis")
     }
 }

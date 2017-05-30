@@ -16,7 +16,7 @@ import java.io.IOException
 
 
 object DirectVorbisDecoder : AudioDecoder {
-    override val streamingVariant: StreamingDecoder = StreamingVorbisDecoder
+    override val streamingVariant: StreamingDecoder = StreamingVorbisDecoderPushdata
 
     override val extension: String = "ogg"
 

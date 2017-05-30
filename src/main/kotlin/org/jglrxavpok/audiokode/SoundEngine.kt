@@ -163,7 +163,7 @@ open class SoundEngine: Disposable {
         finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.streamDecoder.prepare(it.input, filter) } // remember: this 'return' returns from decodeDirect!
+                .forEach { return it.streamDecoder.prepare(it.input.buffered(), filter) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 
