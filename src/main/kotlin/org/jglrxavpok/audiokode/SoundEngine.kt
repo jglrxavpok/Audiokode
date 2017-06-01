@@ -120,7 +120,7 @@ open class SoundEngine: Disposable {
         val infos = prepareStreaming(identifier, filter)
 
         val source = newStreamingSource()
-        source.infos = infos
+        source.info = infos
 
         source.identifier = identifier
         // TODO source.looping = looping
@@ -156,11 +156,11 @@ open class SoundEngine: Disposable {
         source.play()
     }
 
-    private fun prepareStreaming(identifier: String, filter: AudioFilter): StreamingInfos {
+    private fun prepareStreaming(identifier: String, filter: AudioFilter): StreamingInfo {
         finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.streamDecoder.prepare(it.input.buffered(), filter) } // remember: this 'return' returns from decodeDirect!
+                .forEach { return it.streamDecoder.prepare(it.inputProvider().buffered(), filter) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 
@@ -168,7 +168,7 @@ open class SoundEngine: Disposable {
         finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.decoder.decode(readData(it.input), this, filter) } // remember: this 'return' returns from decodeDirect!
+                .forEach { return it.decoder.decode(readData(it.inputProvider()), this, filter) } // remember: this 'return' returns from decodeDirect!
         throw IOException("Could not find audio file with identifier $identifier")
     }
 

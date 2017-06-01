@@ -2,14 +2,12 @@ package org.jglrxavpok.audiokode
 
 import org.jglrxavpok.audiokode.decoders.StreamingDecoder
 import org.jglrxavpok.audiokode.filters.AudioFilter
-import org.lwjgl.BufferUtils
 import org.lwjgl.openal.AL10.*
-import org.lwjgl.system.MemoryStack
 import java.io.InputStream
 
 class StreamingSource(engine: SoundEngine): Source(engine) {
 
-    var infos: StreamingInfos? = null
+    var info: StreamingInfo? = null
     private var eof = false
 
     override fun update() {
@@ -35,7 +33,7 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     }
 
     private fun loadNext(bufferID: Int): Boolean {
-        val eof = infos?.decoder?.loadNextChunk(bufferID, infos!!, engine) ?: true
+        val eof = info?.decoder?.loadNextChunk(bufferID, info!!, engine) ?: true
         // TODO: handle looping
         return ! eof
     }
@@ -50,7 +48,6 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     }
 }
 
-// TODO: Cleanup or simplify
-data class StreamingInfos(val decoder: StreamingDecoder, val format: Int, val frequency: Int, val channels: Int, val input: InputStream, val filter: AudioFilter) {
+data class StreamingInfo(val decoder: StreamingDecoder, val format: Int, val frequency: Int, val channels: Int, val input: InputStream, val filter: AudioFilter) {
     val payload = hashMapOf<String, Any>()
 }

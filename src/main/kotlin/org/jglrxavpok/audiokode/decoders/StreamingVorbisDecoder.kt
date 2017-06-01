@@ -2,7 +2,7 @@ package org.jglrxavpok.audiokode.decoders
 
 import org.jglrxavpok.audiokode.SoundEngine
 import org.jglrxavpok.audiokode.StreamingBufferSize
-import org.jglrxavpok.audiokode.StreamingInfos
+import org.jglrxavpok.audiokode.StreamingInfo
 import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis.*
@@ -20,7 +20,7 @@ object StreamingVorbisDecoder: StreamingDecoder {
 
     private val STBDecoderKey = "stb decoder"
 
-    override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfos {
+    override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfo {
         val buf = readAll(input)
         stackPush()
         val data = ByteBuffer.allocateDirect(buf.size)
@@ -37,7 +37,7 @@ object StreamingVorbisDecoder: StreamingDecoder {
             2 -> AL10.AL_FORMAT_STEREO16
             else -> kotlin.error("Unknown channel count ${infos.channels()}")
         }
-        val result = StreamingInfos(this, format, infos.sample_rate(), infos.channels(), input.buffered(), filter)
+        val result = StreamingInfo(this, format, infos.sample_rate(), infos.channels(), input.buffered(), filter)
         result.payload[STBDecoderKey] = decoderInstance
         stackPop()
 
@@ -57,25 +57,25 @@ object StreamingVorbisDecoder: StreamingDecoder {
         return out.toByteArray()
     }
 
-    override fun loadNextChunk(bufferID: Int, infos: StreamingInfos, engine: SoundEngine): Boolean {
+    override fun loadNextChunk(bufferID: Int, info: StreamingInfo, engine: SoundEngine): Boolean {
         var samples = 0
 
         val pcm = BufferUtils.createShortBuffer(StreamingBufferSize)
-        val decoder = infos.payload[STBDecoderKey] as Long
+        val decoder = info.payload[STBDecoderKey] as Long
         while (samples < StreamingBufferSize) {
-            val samplesPerChannel = stb_vorbis_get_samples_short_interleaved(decoder, infos.channels, pcm)
+            val samplesPerChannel = stb_vorbis_get_samples_short_interleaved(decoder, info.channels, pcm)
             if (samplesPerChannel == 0) {
                 break
             }
 
-            samples += samplesPerChannel * infos.channels
+            samples += samplesPerChannel * info.channels
         }
 
         if (samples == 0) {
             return true
         }
 
-        engine.bufferData(bufferID, infos.format, pcm, infos.frequency, infos.filter)
+        engine.bufferData(bufferID, info.format, pcm, info.frequency, info.filter)
         return false
     }
 

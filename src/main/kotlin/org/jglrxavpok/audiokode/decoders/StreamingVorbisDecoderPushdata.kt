@@ -2,7 +2,7 @@ package org.jglrxavpok.audiokode.decoders
 
 import org.jglrxavpok.audiokode.SoundEngine
 import org.jglrxavpok.audiokode.StreamingBufferSize
-import org.jglrxavpok.audiokode.StreamingInfos
+import org.jglrxavpok.audiokode.StreamingInfo
 import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10
 import org.lwjgl.stb.STBVorbis.*
@@ -11,13 +11,14 @@ import org.lwjgl.system.MemoryStack.*
 import java.io.InputStream
 import java.nio.ByteBuffer
 import org.lwjgl.BufferUtils
+import java.io.IOException
 
 object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
     private val STBDecoderKey = "stb decoder"
     private val AudioStreamKey = "audio stream"
 
-    override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfos {
+    override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfo {
         val stream = AudioStream(input)
         stream.refill()
         val (header, headerLength) = stream.extractContent()
@@ -32,16 +33,16 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         val decoderInstance = stb_vorbis_open_pushdata(data, consumed, error, null)
         stream.consume(consumed[0])
         if(error[0] != 0) {
-
+            throw IOException("Error while loading streaming ogg audio: ${error[0]} (stb_vorbis)")
         }
 
-        val infos = stb_vorbis_get_info(decoderInstance, STBVorbisInfo.malloc())
-        val format = when(infos.channels()) {
+        val info = stb_vorbis_get_info(decoderInstance, STBVorbisInfo.malloc())
+        val format = when(info.channels()) {
             1 -> AL10.AL_FORMAT_MONO16
             2 -> AL10.AL_FORMAT_STEREO16
-            else -> kotlin.error("Unknown channel count ${infos.channels()}")
+            else -> kotlin.error("Unknown channel count ${info.channels()}")
         }
-        val result = StreamingInfos(this, format, infos.sample_rate(), infos.channels(), input.buffered(), filter)
+        val result = StreamingInfo(this, format, info.sample_rate(), info.channels(), input.buffered(), filter)
         result.payload[STBDecoderKey] = decoderInstance
         result.payload[AudioStreamKey] = stream
         stackPop()
@@ -51,9 +52,9 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
     private val buffer = BufferUtils.createByteBuffer(StreamingBufferSize)
 
-    override fun loadNextChunk(bufferID: Int, infos: StreamingInfos, engine: SoundEngine): Boolean {
-        val stream = infos.payload[AudioStreamKey] as AudioStream
-        val decoder = infos.payload[STBDecoderKey] as Long
+    override fun loadNextChunk(bufferID: Int, info: StreamingInfo, engine: SoundEngine): Boolean {
+        val stream = info.payload[AudioStreamKey] as AudioStream
+        val decoder = info.payload[STBDecoderKey] as Long
 
         stackPush()
         val channelsOut = stackMallocInt(1)
@@ -64,9 +65,9 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         do {
             eof = stream.refill()
 
-            val (data, datalength) = stream.extractContent()
+            val (data, dataLength) = stream.extractContent()
             buffer.rewind()
-            buffer.put(data, 0, datalength)
+            buffer.put(data, 0, dataLength)
             buffer.flip()
 
 
@@ -94,7 +95,7 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
         finalOutput.rewind()
 
-        engine.bufferData(bufferID, infos.format, finalOutput, infos.frequency)
+        engine.bufferData(bufferID, info.format, finalOutput, info.frequency)
         stackPop()
 
         return eof

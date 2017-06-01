@@ -9,8 +9,7 @@ object DiskAbsoluteFinder: AudioFinder {
         for((extension, decoder, streaming) in Decoders.map { Triple(it.extension, it, it.streamingVariant) }) {
             val file = File("$identifier.$extension")
             if(file.exists()) {
-                val input = FileInputStream(file)
-                return AudioInfo(input, decoder, streaming)
+                return AudioInfo({FileInputStream(file)}, decoder, streaming)
             }
         }
         return AUDIO_NOT_FOUND
