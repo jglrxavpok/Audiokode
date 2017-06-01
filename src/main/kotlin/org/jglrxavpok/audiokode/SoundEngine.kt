@@ -27,7 +27,6 @@ open class SoundEngine: Disposable {
     private val streamingSourcePool = Pool { createNewStreamingSource() }
     private val bufferPool = Pool { createNewBuffer() }
     private val autoDispose = mutableListOf<Source>()
-    private val streamingSources = mutableListOf<StreamingSource>()
     private val createdBuffers = hashSetOf<Buffer>()
     private val createdSources = hashSetOf<Source>()
     private var masterGain = 1f
@@ -127,8 +126,6 @@ open class SoundEngine: Disposable {
         // TODO source.looping = looping
 
         source.prepareRotatingBuffers()
-        streamingSources += source
-
         return source
     }
 
@@ -217,12 +214,12 @@ open class SoundEngine: Disposable {
         return source
     }
 
-    fun update() {
+    open fun update() {
         updateListener()
 
         autoDispose.filterNot { it.isPlaying() }.forEach(Source::dispose)
-        autoDispose.clear()
-        streamingSources.forEach(StreamingSource::updateStream)
+        autoDispose.removeIf { ! it.isPlaying() }
+        createdSources.forEach(Source::update)
     }
 
     fun updateListener() {
@@ -280,9 +277,6 @@ open class SoundEngine: Disposable {
     }
 
     internal fun upload(buffer: Buffer, raw: ByteBuffer, filter: AudioFilter) {
-        /*val format = buffer.format
-        val frequency = buffer.frequency
-        alBufferData(buffer.alID, format, raw, frequency)*/
         upload(buffer, raw.asShortBuffer(), filter)
     }
 

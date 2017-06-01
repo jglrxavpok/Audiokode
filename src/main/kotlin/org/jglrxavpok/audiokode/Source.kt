@@ -31,6 +31,7 @@ open class Source(protected val engine: SoundEngine): Disposable {
     var identifier: String = ""
         internal set
     internal var alID: Int = -1
+    private var playing = false
 
     fun bindBuffer(buffer: Buffer) {
         engine.bindSourceBuffer(this, buffer)
@@ -41,23 +42,31 @@ open class Source(protected val engine: SoundEngine): Disposable {
     }
 
     fun isPlaying(): Boolean {
-        return AL10.alGetSourcei(alID, AL10.AL_SOURCE_STATE) == AL10.AL_PLAYING
+        return playing
     }
 
     fun play() {
         AL10.alSourcePlay(alID)
+        playing = true
     }
 
     fun pause() {
         AL10.alSourcePause(alID)
     }
 
+    open fun update() {
+        playing = (AL10.alGetSourcei(alID, AL10.AL_SOURCE_STATE) == AL10.AL_PLAYING)
+    }
+
     fun resume() {
-        play()
+        if(AL10.alGetSourcei(alID, AL10.AL_SOURCE_STATE) != AL10.AL_PLAYING) {
+            play()
+        }
     }
 
     fun stop() {
         AL10.alSourceStop(alID)
+        playing = false
     }
 
 }

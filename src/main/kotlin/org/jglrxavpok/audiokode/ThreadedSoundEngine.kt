@@ -1,6 +1,6 @@
 package org.jglrxavpok.audiokode
 
-class ThreadedSoundEngine(val updatePeriod: Long = 10): SoundEngine() {
+class ThreadedSoundEngine: SoundEngine() {
 
     var stopped = false
 
@@ -9,9 +9,9 @@ class ThreadedSoundEngine(val updatePeriod: Long = 10): SoundEngine() {
         val thread = Thread {
             while(!stopped) {
                 this.update()
-                Thread.sleep(updatePeriod)
             }
         }
+        thread.priority = Thread.MAX_PRIORITY
         thread.isDaemon = false
         thread.start()
     }

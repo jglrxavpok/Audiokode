@@ -12,9 +12,6 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import org.lwjgl.BufferUtils
 
-/**
- * Still reads all the file contents to the memory. OpenAL has only small buffers streamed to it though.
- */
 object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
     private val STBDecoderKey = "stb decoder"
@@ -23,10 +20,10 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
     override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfos {
         val stream = AudioStream(input)
         stream.refill()
-        val header = stream.extractContent()
+        val (header, headerLength) = stream.extractContent()
         stackPush()
         val data = ByteBuffer.allocateDirect(header.size)
-        data.put(header)
+        data.put(header, 0, headerLength)
         data.flip()
 
         val error = stackMallocInt(1)
@@ -34,7 +31,9 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
         val decoderInstance = stb_vorbis_open_pushdata(data, consumed, error, null)
         stream.consume(consumed[0])
-        println("error is ${error[0]}, consumed is ${consumed[0]}")
+        if(error[0] != 0) {
+
+        }
 
         val infos = stb_vorbis_get_info(decoderInstance, STBVorbisInfo.malloc())
         val format = when(infos.channels()) {
@@ -50,6 +49,8 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         return result
     }
 
+    private val buffer = BufferUtils.createByteBuffer(StreamingBufferSize)
+
     override fun loadNextChunk(bufferID: Int, infos: StreamingInfos, engine: SoundEngine): Boolean {
         val stream = infos.payload[AudioStreamKey] as AudioStream
         val decoder = infos.payload[STBDecoderKey] as Long
@@ -62,10 +63,12 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         var eof: Boolean
         do {
             eof = stream.refill()
-            val data = stream.extractContent()
-            val buffer = BufferUtils.createByteBuffer(data.size)
-            buffer.put(data)
+
+            val (data, datalength) = stream.extractContent()
+            buffer.rewind()
+            buffer.put(data, 0, datalength)
             buffer.flip()
+
 
             val consumed = stb_vorbis_decode_frame_pushdata(decoder, buffer, channelsOut, samplesPointerPointer, samplesOut)
             stream.consume(consumed)
@@ -73,19 +76,19 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
             channelsOut.rewind()
             samplesOut.rewind()
-        } while(samples == 0)
+        } while (samples == 0)
 
         val channels = channelsOut.get(0)
         val samples = samplesOut.get(0)
 
         val output_pp = samplesPointerPointer.getPointerBuffer(channels) // float**
-        val finalOutput = stackMallocShort(samples*channels)
+        val finalOutput = stackMallocShort(samples * channels)
         for (c in 0..channels - 1) {
             val channel = output_pp.getFloatBuffer(c, samples) // float*
             for (s in 0..samples - 1) {
                 val sample = channel.get(s)
-                val shortSamples = (sample*Short.MAX_VALUE).toShort()
-                finalOutput.put(c+s*channels, shortSamples)
+                val shortSamples = ((sample * Short.MAX_VALUE).coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())).toShort()
+                finalOutput.put(c + s * channels, shortSamples)
             }
         }
 
@@ -103,14 +106,12 @@ private class AudioStream(val input: InputStream) {
     private val buffer = ByteArray(StreamingBufferSize)
     var length = 0
         private set
+    private val data = ExtractedData(buffer, length)
+    private val tail = ByteArray(StreamingBufferSize)
 
-    fun extractContent(): ByteArray {
-        val extracted = ByteArray(length)
-        /*for (i in 0 until length) {
-            extracted[i] = buffer[i]
-        }*/
-        System.arraycopy(buffer, 0, extracted, 0, length)
-        return extracted
+    fun extractContent(): ExtractedData {
+        data.length = length
+        return data
     }
 
     fun consume(n: Int) {
@@ -124,26 +125,28 @@ private class AudioStream(val input: InputStream) {
     }
 
     fun refill(): Boolean {
-        val tail = ByteArray(buffer.size-length)
-        val eof = readChunk(input, tail)
-        System.arraycopy(tail, 0, buffer, length, tail.size)
+        val tailSize = buffer.size-length
+        val eof = readChunk(input, tail, tailSize)
+        System.arraycopy(tail, 0, buffer, length, tailSize)
 
-        length += tail.size
+        length += tailSize
 
         return eof
     }
 
-    private fun readChunk(input: InputStream, chunk: ByteArray): Boolean {
+    private fun readChunk(input: InputStream, chunk: ByteArray, totalSize: Int): Boolean {
         var eof = false
         var total = 0
         do {
-            val read = input.read(chunk, total, chunk.size-total)
+            val read = input.read(chunk, total, totalSize-total)
             if(read != -1) {
                 total += read
             }
             if(read == -1)
                 eof = true
-        } while(read != -1 && total < chunk.size)
+        } while(read != -1 && total < totalSize)
         return eof
     }
 }
+
+data class ExtractedData(val buffer: ByteArray, var length: Int)

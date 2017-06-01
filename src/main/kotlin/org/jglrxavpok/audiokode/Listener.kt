@@ -6,6 +6,4 @@ class Listener {
     var velocity: Vector3D = NullVector
     var up: Vector3D = NullVector
     var lookDirection: Vector3D = NullVector
-
-    var angle = 0f // TODO: Check if necessary
 }

@@ -41,6 +41,7 @@ object StreamingWaveDecoder: StreamingDecoder {
         }
 
         val result = StreamingInfos(this, channels, audioFormat.sampleRate.toInt(), audioFormat.channels, input, filter)
+        // FIXME: use constants
         result.payload["sampleSizeInBits"] = audioFormat.sampleSizeInBits
         result.payload["isBigEndian"] = audioFormat.isBigEndian
         result.payload["frameLength"] = ais.frameLength
@@ -49,7 +50,6 @@ object StreamingWaveDecoder: StreamingDecoder {
 
     override fun loadNextChunk(bufferID: Int, infos: StreamingInfos, engine: SoundEngine): Boolean {
         val buffer: ByteBuffer
-            //available = infos.channels * infos.frameLength.toInt() * infos.sampleSizeInBits / 8
         val buf = ByteArray(StreamingBufferSize)
         var read: Int
         var total = 0
@@ -63,6 +63,7 @@ object StreamingWaveDecoder: StreamingDecoder {
                 eof = true
             }
         } while(read != -1 && total < buf.size)
+        // FIXME use constants
         val sampleSizeInBits = infos.payload["sampleSizeInBits"] as Int
         val isBigEndian = infos.payload["isBigEndian"] as Boolean
         buffer = DirectWaveDecoder.convertAudioBytes(buf, sampleSizeInBits == 16, if (isBigEndian) ByteOrder.BIG_ENDIAN else ByteOrder.LITTLE_ENDIAN)

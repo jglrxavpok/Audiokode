@@ -12,26 +12,25 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     var infos: StreamingInfos? = null
     private var eof = false
 
+    override fun update() {
+        updateStream()
+        super.update()
+    }
+
     fun updateStream() {
-        if(eof) {
-            println("end of file StreamingSource") // FIXME
-            return
-        }
         val processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
         if (processed > 0) {
-            MemoryStack.stackPush()
-            val buffers = MemoryStack.stackMallocInt(processed)
+            val buffers = IntArray(processed)
             alSourceUnqueueBuffers(alID, buffers)
-            buffers.rewind()
-            while(buffers.hasRemaining()) {
-                if (!loadNext(buffers.get())) {
-                    eof = true
-                    break
+            if (!eof) {
+                for (id in buffers) {
+                    if (!loadNext(id)) {
+                        eof = true
+                        break
+                    }
                 }
+                alSourceQueueBuffers(alID, buffers)
             }
-            buffers.rewind()
-            alSourceQueueBuffers(alID, buffers)
-            MemoryStack.stackPop()
         }
     }
 
@@ -43,12 +42,10 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 
     fun prepareRotatingBuffers() {
         alSourcei(alID, AL_BUFFER, 0)
-        val buffers = BufferUtils.createIntBuffer(8)
+        val buffers = IntArray(8)
         alGenBuffers(buffers)
-        buffers.rewind()
-        while(buffers.hasRemaining())
-            loadNext(buffers.get())
-        buffers.rewind()
+        for(id in buffers)
+            loadNext(id)
         alSourceQueueBuffers(alID, buffers)
     }
 }
