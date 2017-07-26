@@ -4,6 +4,8 @@ import org.jglrxavpok.audiokode.decoders.StreamingDecoder
 import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10.*
 import java.io.InputStream
+import kotlin.system.measureNanoTime
+import kotlin.system.measureTimeMillis
 
 class StreamingSource(engine: SoundEngine): Source(engine) {
 
@@ -16,20 +18,21 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     }
 
     fun updateStream() {
-        val processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
-        if (processed > 0) {
-            val buffers = IntArray(processed)
-            alSourceUnqueueBuffers(alID, buffers)
+        var processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
+        val replay = processed == 8
+        while(processed > 0) {
+            val bufID = alSourceUnqueueBuffers(alID)
             if (!eof) {
-                for (id in buffers) {
-                    if (!loadNext(id)) {
-                        eof = true
-                        break
-                    }
+                if (!loadNext(bufID)) {
+                    eof = true
+                    break
                 }
-                alSourceQueueBuffers(alID, buffers)
+                alSourceQueueBuffers(alID, bufID)
             }
+            processed--
         }
+        if(replay)
+            alSourcePlay(alID)
     }
 
     private fun loadNext(bufferID: Int): Boolean {
