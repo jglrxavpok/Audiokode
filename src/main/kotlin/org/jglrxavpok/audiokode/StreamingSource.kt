@@ -9,6 +9,7 @@ import kotlin.system.measureTimeMillis
 
 class StreamingSource(engine: SoundEngine): Source(engine) {
 
+    private val ROTATING_BUFFER_COUNT = 8
     var info: StreamingInfo? = null
     private var eof = false
 
@@ -19,7 +20,7 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 
     fun updateStream() {
         var processed = alGetSourcei(alID, AL_BUFFERS_PROCESSED)
-        val replay = processed == 8
+        val replay = processed == ROTATING_BUFFER_COUNT
         while(processed > 0) {
             val bufID = alSourceUnqueueBuffers(alID)
             if (!eof) {
@@ -43,7 +44,7 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 
     fun prepareRotatingBuffers() {
         alSourcei(alID, AL_BUFFER, 0)
-        val buffers = IntArray(8)
+        val buffers = IntArray(ROTATING_BUFFER_COUNT)
         alGenBuffers(buffers)
         for(id in buffers)
             loadNext(id)
