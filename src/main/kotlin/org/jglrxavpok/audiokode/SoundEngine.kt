@@ -123,7 +123,7 @@ open class SoundEngine: Disposable {
         source.info = infos
 
         source.identifier = identifier
-        // TODO source.looping = looping
+        source.looping = looping
 
         source.prepareRotatingBuffers()
         return source
@@ -138,8 +138,8 @@ open class SoundEngine: Disposable {
         source.play()
     }
 
-    fun quickplayMusic(identifier: String, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
-        val source = music(identifier, false, filter, position, velocity, gain, pitch)
+    fun quickplayMusic(identifier: String, looping: Boolean = false, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
+        val source = music(identifier, looping, filter, position, velocity, gain, pitch)
         autoDispose += source
         source.play()
     }
@@ -150,17 +150,22 @@ open class SoundEngine: Disposable {
         source.play()
     }
 
-    fun quickplayBackgroundMusic(identifier: String, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
-        val source = backgroundMusic(identifier, false, filter, gain, pitch)
+    fun quickplayBackgroundMusic(identifier: String, looping: Boolean = false, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
+        val source = backgroundMusic(identifier, looping, filter, gain, pitch)
         autoDispose += source
         source.play()
     }
 
     private fun prepareStreaming(identifier: String, filter: AudioFilter): StreamingInfo {
-        finders.reversed()
+        val validFinders = finders.reversed()
                 .map { it.findAudio(identifier) }
                 .filter { it != AUDIO_NOT_FOUND }
-                .forEach { return it.streamDecoder.prepare(it.inputProvider().buffered(), filter) } // remember: this 'return' returns from decodeDirect!
+        if(validFinders.isNotEmpty()) {
+            val finder = validFinders[0]
+            val infos = finder.streamDecoder.prepare(finder.inputProvider().buffered(), filter)
+            infos.inputProvider = finder.inputProvider
+            return infos
+        }
         throw IOException("Could not find audio file with identifier $identifier")
     }
 

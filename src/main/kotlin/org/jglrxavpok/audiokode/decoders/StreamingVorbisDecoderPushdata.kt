@@ -17,6 +17,7 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
     private val STBDecoderKey = "stb decoder"
     private val AudioStreamKey = "audio stream"
+    private val ByteBufferKey = "ByteBuffer"
 
     override fun prepare(input: InputStream, filter: AudioFilter): StreamingInfo {
         val stream = AudioStream(input)
@@ -45,25 +46,31 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         val result = StreamingInfo(this, format, info.sample_rate(), info.channels(), input.buffered(), filter)
         result.payload[STBDecoderKey] = decoderInstance
         result.payload[AudioStreamKey] = stream
+        result.payload[ByteBufferKey] = BufferUtils.createByteBuffer(StreamingBufferSize)
         stackPop()
 
         return result
     }
 
-    private val buffer = BufferUtils.createByteBuffer(StreamingBufferSize)
 
     override fun loadNextChunk(bufferID: Int, info: StreamingInfo, engine: SoundEngine): Boolean {
         val stream = info.payload[AudioStreamKey] as AudioStream
         val decoder = info.payload[STBDecoderKey] as Long
+        val buffer = info.payload[ByteBufferKey] as ByteBuffer
 
         stackPush()
         val channelsOut = stackMallocInt(1)
         val samplesOut = stackMallocInt(1)
         val samplesPointerPointer = stackMallocPointer(1)
 
-        var eof: Boolean
+        var completelyConsumed = stream.length == 0 && stream.eof
+        if(completelyConsumed) {
+            stackPop()
+            return true
+        }
+
         do {
-            eof = stream.refill()
+            val eof = stream.refill()
 
             val (data, dataLength) = stream.extractContent()
             buffer.rewind()
@@ -77,7 +84,13 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
             channelsOut.rewind()
             samplesOut.rewind()
-        } while (samples == 0)
+
+            completelyConsumed = stream.length == 0 && eof
+        } while (samples == 0 && !completelyConsumed)
+
+        if(completelyConsumed) {
+            stb_vorbis_close(decoder)
+        }
 
         val channels = channelsOut.get(0)
         val samples = samplesOut.get(0)
@@ -98,7 +111,7 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
         engine.bufferData(bufferID, info.format, finalOutput, info.frequency)
         stackPop()
 
-        return eof
+        return completelyConsumed
     }
 
 }
@@ -109,6 +122,7 @@ private class AudioStream(val input: InputStream) {
         private set
     private val data = ExtractedData(buffer, length)
     private val tail = ByteArray(StreamingBufferSize)
+    internal var eof = false
 
     fun extractContent(): ExtractedData {
         data.length = length
@@ -127,26 +141,25 @@ private class AudioStream(val input: InputStream) {
 
     fun refill(): Boolean {
         val tailSize = buffer.size-length
-        val eof = readChunk(input, tail, tailSize)
-        System.arraycopy(tail, 0, buffer, length, tailSize)
+        val read = readChunk(input, tail, tailSize)
+        System.arraycopy(tail, 0, buffer, length, read)
 
-        length += tailSize
+        length += read
 
         return eof
     }
 
-    private fun readChunk(input: InputStream, chunk: ByteArray, totalSize: Int): Boolean {
-        var eof = false
+    private fun readChunk(input: InputStream, chunk: ByteArray, totalSize: Int): Int {
         var total = 0
         do {
             val read = input.read(chunk, total, totalSize-total)
             if(read != -1) {
                 total += read
-            }
-            if(read == -1)
+            } else {
                 eof = true
+            }
         } while(read != -1 && total < totalSize)
-        return eof
+        return total
     }
 }
 

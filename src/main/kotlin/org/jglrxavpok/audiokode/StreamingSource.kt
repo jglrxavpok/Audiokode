@@ -4,13 +4,11 @@ import org.jglrxavpok.audiokode.decoders.StreamingDecoder
 import org.jglrxavpok.audiokode.filters.AudioFilter
 import org.lwjgl.openal.AL10.*
 import java.io.InputStream
-import kotlin.system.measureNanoTime
-import kotlin.system.measureTimeMillis
 
 class StreamingSource(engine: SoundEngine): Source(engine) {
 
     private val ROTATING_BUFFER_COUNT = 8
-    var info: StreamingInfo? = null
+    lateinit var info: StreamingInfo
     private var eof = false
 
     override fun update() {
@@ -26,7 +24,6 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
             if (!eof) {
                 if (!loadNext(bufID)) {
                     eof = true
-                    break
                 }
                 alSourceQueueBuffers(alID, bufID)
             }
@@ -37,8 +34,15 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
     }
 
     private fun loadNext(bufferID: Int): Boolean {
-        val eof = info?.decoder?.loadNextChunk(bufferID, info!!, engine) ?: true
-        // TODO: handle looping
+        val eof = info.decoder.loadNextChunk(bufferID, info, engine)
+        if(eof && looping) {
+            this.eof = false
+            val provider = info.inputProvider
+            val inputStream = provider().buffered()
+            info = info.decoder.prepare(inputStream, info.filter)
+            info.inputProvider = provider
+            return loadNext(bufferID)
+        }
         return ! eof
     }
 
@@ -54,4 +58,5 @@ class StreamingSource(engine: SoundEngine): Source(engine) {
 
 data class StreamingInfo(val decoder: StreamingDecoder, val format: Int, val frequency: Int, val channels: Int, val input: InputStream, val filter: AudioFilter) {
     val payload = hashMapOf<String, Any>()
+    lateinit var inputProvider: () -> InputStream
 }

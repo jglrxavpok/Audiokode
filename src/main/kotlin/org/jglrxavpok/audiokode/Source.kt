@@ -26,7 +26,8 @@ open class Source(protected val engine: SoundEngine): Disposable {
     var looping = false
         set(value) {
             field = value
-            engine.sourceLooping(this, value)
+            if(this !is StreamingSource) // ugly fix
+                engine.sourceLooping(this, value)
         }
     var identifier: String = ""
         internal set
