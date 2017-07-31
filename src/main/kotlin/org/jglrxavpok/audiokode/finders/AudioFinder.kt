@@ -12,7 +12,6 @@ interface AudioFinder {
     fun findAudio(identifier: String): AudioInfo
 }
 
-// TODO: Change input to an input provider (will help streaming)
 data class AudioInfo(val inputProvider: () -> InputStream, val decoder: AudioDecoder, val streamDecoder: StreamingDecoder)
 
 val AUDIO_NOT_FOUND = AudioInfo({ByteArrayInputStream(byteArrayOf(0))}, DirectWaveDecoder, StreamingWaveDecoder)
