@@ -5,7 +5,7 @@ object TestFiltered {
     @JvmStatic fun main(args: Array<String>) {
         val engine = SoundEngine()
         engine.initWithDefaultOpenAL()
-        engine.quickplayBackgroundMusic("TestWav", NegateFilter)
+        engine.quickplayBackgroundMusic("TestWav", looping = false, filter = NegateFilter)
         while(engine.isSomethingPlaying()) {
             engine.update()
             Thread.sleep(1)
