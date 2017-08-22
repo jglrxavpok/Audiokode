@@ -13,13 +13,13 @@ fun checkErrors(info: String = "") {
 }
 
 fun getALErrorString(err: Int): String {
-    when (err) {
-        AL10.AL_NO_ERROR -> return "AL_NO_ERROR"
-        AL10.AL_INVALID_NAME -> return "AL_INVALID_NAME"
-        AL10.AL_INVALID_ENUM -> return "AL_INVALID_ENUM"
-        AL10.AL_INVALID_VALUE -> return "AL_INVALID_VALUE"
-        AL10.AL_INVALID_OPERATION -> return "AL_INVALID_OPERATION"
-        AL10.AL_OUT_OF_MEMORY -> return "AL_OUT_OF_MEMORY"
-        else -> return "Unknown error code $err"
+    return when (err) {
+        AL10.AL_NO_ERROR -> "AL_NO_ERROR"
+        AL10.AL_INVALID_NAME -> "AL_INVALID_NAME"
+        AL10.AL_INVALID_ENUM -> "AL_INVALID_ENUM"
+        AL10.AL_INVALID_VALUE -> "AL_INVALID_VALUE"
+        AL10.AL_INVALID_OPERATION -> "AL_INVALID_OPERATION"
+        AL10.AL_OUT_OF_MEMORY -> "AL_OUT_OF_MEMORY"
+        else -> "Unknown error code $err"
     }
 }

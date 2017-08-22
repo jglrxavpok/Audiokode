@@ -97,9 +97,9 @@ object StreamingVorbisDecoderPushdata: StreamingDecoder {
 
         val output_pp = samplesPointerPointer.getPointerBuffer(channels) // float**
         val finalOutput = stackMallocShort(samples * channels)
-        for (c in 0..channels - 1) {
+        for (c in 0 until channels) {
             val channel = output_pp.getFloatBuffer(c, samples) // float*
-            for (s in 0..samples - 1) {
+            for (s in 0 until samples) {
                 val sample = channel.get(s)
                 val shortSamples = ((sample * Short.MAX_VALUE).coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())).toShort()
                 finalOutput.put(c + s * channels, shortSamples)

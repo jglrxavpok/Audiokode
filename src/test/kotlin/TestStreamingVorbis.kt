@@ -1,6 +1,4 @@
 import org.jglrxavpok.audiokode.SoundEngine
-import org.lwjgl.openal.AL10
-import kotlin.system.measureNanoTime
 
 object TestStreamingVorbis {
 

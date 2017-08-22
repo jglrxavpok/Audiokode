@@ -22,24 +22,20 @@ object StreamingWaveDecoder: StreamingDecoder {
 
         // get channels
         val channels: Int
-        if (audioFormat.channels == 1) {
-            if (audioFormat.sampleSizeInBits == 8) {
-                channels = AL10.AL_FORMAT_MONO8
-            } else if (audioFormat.sampleSizeInBits == 16) {
-                channels = AL10.AL_FORMAT_MONO16
-            } else {
-                throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
-            }
-        } else if (audioFormat.channels == 2) {
-            if (audioFormat.sampleSizeInBits == 8) {
-                channels = AL10.AL_FORMAT_STEREO8
-            } else if (audioFormat.sampleSizeInBits == 16) {
-                channels = AL10.AL_FORMAT_STEREO16
-            } else {
-                throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
-            }
-        } else {
-            throw IOException("Only mono or stereo is supported, found ${audioFormat.channels} channels")
+        channels = when {
+            audioFormat.channels == 1 ->
+                when {
+                    audioFormat.sampleSizeInBits == 8 -> AL10.AL_FORMAT_MONO8
+                    audioFormat.sampleSizeInBits == 16 -> AL10.AL_FORMAT_MONO16
+                    else -> throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
+                }
+            audioFormat.channels == 2 ->
+                when {
+                    audioFormat.sampleSizeInBits == 8 -> AL10.AL_FORMAT_STEREO8
+                    audioFormat.sampleSizeInBits == 16 -> AL10.AL_FORMAT_STEREO16
+                    else -> throw IOException("Illegal sample size ${audioFormat.sampleSizeInBits}")
+                }
+            else -> throw IOException("Only mono or stereo is supported, found ${audioFormat.channels} channels")
         }
 
         val result = StreamingInfo(this, channels, audioFormat.sampleRate.toInt(), audioFormat.channels, input, filter)

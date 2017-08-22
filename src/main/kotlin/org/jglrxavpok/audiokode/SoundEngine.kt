@@ -178,7 +178,6 @@ open class SoundEngine: Disposable {
     }
 
     private fun readData(input: InputStream): ByteArray {
-
         val buffer = ByteArrayOutputStream()
         var nRead: Int
         val data = ByteArray(1024)
@@ -189,8 +188,7 @@ open class SoundEngine: Disposable {
         } while (nRead != -1)
 
         buffer.flush()
-        val byteArray = buffer.toByteArray()
-        return byteArray
+        return buffer.toByteArray()
     }
 
     private fun createNewSource(): Source {

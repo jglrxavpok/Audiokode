@@ -42,12 +42,10 @@ object DirectVorbisDecoder : AudioDecoder {
 
         //Find the correct OpenAL format
         val format: Int
-        if (channels == 1) {
-            format = AL_FORMAT_MONO16
-        } else if (channels == 2) {
-            format = AL_FORMAT_STEREO16
-        } else {
-            throw IOException("Unsupported amount of channels: $channels")
+        format = when (channels) {
+            1 -> AL_FORMAT_MONO16
+            2 -> AL_FORMAT_STEREO16
+            else -> throw IOException("Unsupported amount of channels: $channels")
         }
 
         val result = engine.newBuffer()
