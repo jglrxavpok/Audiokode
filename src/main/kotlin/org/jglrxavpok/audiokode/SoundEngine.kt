@@ -138,16 +138,36 @@ open class SoundEngine: Disposable {
         source.play()
     }
 
+    private fun random(list: List<String>): String {
+        val index = Math.round(Math.random() * (list.size-1)).toInt()
+        return list[index]
+    }
+
+    fun quickplayMusic(identifiers: List<String>, looping: Boolean = false, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
+        val chosen = random(identifiers)
+        quickplayMusic(chosen, looping, filter, position, velocity, gain, pitch)
+    }
+
     fun quickplayMusic(identifier: String, looping: Boolean = false, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
         val source = music(identifier, looping, filter, position, velocity, gain, pitch)
         autoDispose += source
         source.play()
     }
 
+    fun quickplaySound(identifiers: List<String>, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
+        val chosen = random(identifiers)
+        quickplaySound(chosen, filter, position, velocity, gain, pitch)
+    }
+
     fun quickplaySound(identifier: String, filter: AudioFilter = NoFilter, position: Vector3D = NullVector, velocity: Vector3D = NullVector, gain: Float = 1f, pitch: Float = 1f) {
         val source = sound(identifier, false, filter, position, velocity, gain, pitch)
         autoDispose += source
         source.play()
+    }
+
+    fun quickplayBackgroundMusic(identifiers: List<String>, looping: Boolean = false, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
+        val chosen = random(identifiers)
+        quickplayBackgroundMusic(chosen, looping, filter, gain, pitch)
     }
 
     fun quickplayBackgroundMusic(identifier: String, looping: Boolean = false, filter: AudioFilter = NoFilter, gain: Float = 1f, pitch: Float = 1f) {
