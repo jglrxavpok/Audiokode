@@ -242,7 +242,8 @@ open class SoundEngine: Disposable {
 
         autoDispose.filterNot { it.isPlaying() }.forEach(Source::dispose)
         autoDispose.removeIf { ! it.isPlaying() }
-        createdSources.forEach(Source::update)
+
+        createdSources.forEach { it.update() }
     }
 
     fun updateListener() {
@@ -291,15 +292,15 @@ open class SoundEngine: Disposable {
         bufferData(buffer.alID, format, filter(raw), frequency)
     }
 
-    internal fun bufferData(alID: Int, format: Int, pcmData: ShortBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
+    fun bufferData(alID: Int, format: Int, pcmData: ShortBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
         alBufferData(alID, format, filter(pcmData), frequency)
     }
 
-    internal fun bufferData(alID: Int, format: Int, pcmData: ByteBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
+    fun bufferData(alID: Int, format: Int, pcmData: ByteBuffer, frequency: Int, filter: AudioFilter = NoFilter) {
         bufferData(alID, format, pcmData.asShortBuffer(), frequency, filter)
     }
 
-    internal fun upload(buffer: Buffer, raw: ByteBuffer, filter: AudioFilter) {
+    fun upload(buffer: Buffer, raw: ByteBuffer, filter: AudioFilter) {
         upload(buffer, raw.asShortBuffer(), filter)
     }
 
